@@ -11,10 +11,20 @@ type LockedES[S any] struct {
 	mu    sync.RWMutex
 	state S
 	apply func(*S, eventsourced.Event) error
+	clone func(S) S
 }
 
-func New[S any](zero S, apply func(*S, eventsourced.Event) error) *LockedES[S] {
-	return &LockedES[S]{state: zero, apply: apply}
+func New[S any](zero S, apply func(*S, eventsourced.Event) error, clone func(S) S) *LockedES[S] {
+	if apply == nil {
+		panic("apply function cannot be nil")
+	}
+	
+	if clone == nil {
+		// Default to identity function - return state as-is
+		clone = func(s S) S { return s }
+	}
+	
+	return &LockedES[S]{state: zero, apply: apply, clone: clone}
 }
 
 func (x *LockedES[S]) Apply(e eventsourced.Event) error {
@@ -26,5 +36,5 @@ func (x *LockedES[S]) Apply(e eventsourced.Event) error {
 func (x *LockedES[S]) GetState() S {
 	x.mu.RLock()
 	defer x.mu.RUnlock()
-	return x.state
+	return x.clone(x.state)
 }

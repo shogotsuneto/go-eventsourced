@@ -61,7 +61,9 @@ func applyUserEvent(state *UserState, event eventsourced.Event) error {
 func main() {
 	// Initialize the event sourced state with a zero value
 	initialState := UserState{Name: "Unknown", Age: 0, Email: ""}
-	es := locked.New(initialState, applyUserEvent)
+	
+	// Use the Clone method as the clone function
+	es := locked.New(initialState, applyUserEvent, UserState.Clone)
 
 	fmt.Println("=== Event Sourced User State Example ===")
 	fmt.Printf("Initial state: %+v\n", es.GetState())
@@ -83,14 +85,15 @@ func main() {
 	// Demonstrate state cloning to avoid mutation
 	fmt.Println("\n=== State Cloning Example ===")
 	currentState := es.GetState()
-	clonedState := currentState.Clone()
+	// GetState now automatically clones the state
+	clonedState := es.GetState()
 	
-	fmt.Printf("Original state: %+v\n", currentState)
-	fmt.Printf("Cloned state: %+v\n", clonedState)
+	fmt.Printf("First call to GetState: %+v\n", currentState)
+	fmt.Printf("Second call to GetState: %+v\n", clonedState)
 	
-	// Modify the clone to show they're independent
-	clonedState.Name = "Modified Clone"
-	fmt.Printf("After modifying clone - Original: %+v\n", currentState)
-	fmt.Printf("After modifying clone - Clone: %+v\n", clonedState)
-	fmt.Printf("ES state unchanged: %+v\n", es.GetState())
+	// Modify one of the returned states to show they're independent
+	currentState.Name = "Modified State"
+	fmt.Printf("After modifying first returned state - First: %+v\n", currentState)
+	fmt.Printf("After modifying first returned state - Second: %+v\n", clonedState)
+	fmt.Printf("ES GetState() returns fresh clone: %+v\n", es.GetState())
 }

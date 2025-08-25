@@ -38,7 +38,7 @@ func testApplyFunc(state *TestState, event eventsourced.Event) error {
 
 func TestNew(t *testing.T) {
 	initialState := TestState{Counter: 0, Message: ""}
-	es := New(initialState, testApplyFunc)
+	es := New(initialState, testApplyFunc, nil) // nil clone function should use identity
 
 	if es == nil {
 		t.Fatal("New() returned nil")
@@ -52,7 +52,7 @@ func TestNew(t *testing.T) {
 
 func TestApply(t *testing.T) {
 	initialState := TestState{Counter: 0, Message: ""}
-	es := New(initialState, testApplyFunc)
+	es := New(initialState, testApplyFunc, nil) // nil clone function should use identity
 
 	// Test successful event application
 	event := TestEvent{EventType: "increment", Value: 5}
@@ -69,7 +69,7 @@ func TestApply(t *testing.T) {
 
 func TestApplyError(t *testing.T) {
 	initialState := TestState{Counter: 0, Message: ""}
-	es := New(initialState, testApplyFunc)
+	es := New(initialState, testApplyFunc, nil) // nil clone function should use identity
 
 	// Test error case
 	event := TestEvent{EventType: "error", Value: 0}
@@ -81,7 +81,7 @@ func TestApplyError(t *testing.T) {
 
 func TestGetState(t *testing.T) {
 	initialState := TestState{Counter: 42, Message: "test"}
-	es := New(initialState, testApplyFunc)
+	es := New(initialState, testApplyFunc, nil) // nil clone function should use identity
 
 	state := es.GetState()
 	if state.Counter != 42 || state.Message != "test" {
@@ -91,7 +91,7 @@ func TestGetState(t *testing.T) {
 
 func TestConcurrentAccess(t *testing.T) {
 	initialState := TestState{Counter: 0, Message: ""}
-	es := New(initialState, testApplyFunc)
+	es := New(initialState, testApplyFunc, nil) // nil clone function should use identity
 
 	// Test concurrent reads and writes
 	done := make(chan bool, 2)
@@ -121,5 +121,44 @@ func TestConcurrentAccess(t *testing.T) {
 	finalState := es.GetState()
 	if finalState.Counter != 100 {
 		t.Errorf("Expected final counter to be 100, got %d", finalState.Counter)
+	}
+}
+
+func TestNilApplyFunctionPanics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected panic when apply function is nil")
+		}
+	}()
+
+	initialState := TestState{Counter: 0, Message: ""}
+	New(initialState, nil, nil) // This should panic
+}
+
+func TestCloneFunction(t *testing.T) {
+	initialState := TestState{Counter: 42, Message: "test"}
+	
+	// Test with custom clone function
+	cloneFunc := func(s TestState) TestState {
+		return TestState{Counter: s.Counter + 100, Message: s.Message + "_cloned"}
+	}
+	
+	es := New(initialState, testApplyFunc, cloneFunc)
+	
+	state := es.GetState()
+	// State should be cloned according to our custom clone function
+	if state.Counter != 142 || state.Message != "test_cloned" {
+		t.Errorf("Clone function not working correctly: %+v", state)
+	}
+}
+
+func TestNilCloneFunctionUsesIdentity(t *testing.T) {
+	initialState := TestState{Counter: 42, Message: "test"}
+	es := New(initialState, testApplyFunc, nil) // nil clone function should use identity
+
+	state := es.GetState()
+	// With identity clone function, state should be returned as-is
+	if state.Counter != 42 || state.Message != "test" {
+		t.Errorf("Identity clone function not working correctly: %+v", state)
 	}
 }
