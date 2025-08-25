@@ -1,8 +1,10 @@
-package eventsourced
+package locked
 
 import (
 	"errors"
 	"testing"
+
+	"github.com/shogotsuneto/go-eventsourced"
 )
 
 // Test Event implementations
@@ -20,7 +22,7 @@ type TestState struct {
 }
 
 // Test apply function
-func testApplyFunc(state *TestState, event Event) error {
+func testApplyFunc(state *TestState, event eventsourced.Event) error {
 	switch e := event.(type) {
 	case TestEvent:
 		if e.EventType == "increment" {

@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/shogotsuneto/go-eventsourced"
+	"github.com/shogotsuneto/go-eventsourced/locked"
 )
 
 // UserState represents our application state
@@ -60,7 +61,7 @@ func applyUserEvent(state *UserState, event eventsourced.Event) error {
 func main() {
 	// Initialize the event sourced state with a zero value
 	initialState := UserState{Name: "Unknown", Age: 0, Email: ""}
-	es := eventsourced.New(initialState, applyUserEvent)
+	es := locked.New(initialState, applyUserEvent)
 
 	fmt.Println("=== Event Sourced User State Example ===")
 	fmt.Printf("Initial state: %+v\n", es.GetState())
