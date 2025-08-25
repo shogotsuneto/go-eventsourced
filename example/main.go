@@ -15,9 +15,24 @@ type UserState struct {
 	Email string
 }
 
-// Clone creates a deep copy of the UserState
-func (u UserState) Clone() UserState {
-	return UserState{
+// Apply implements eventsourced.State[UserState] - mutates the receiver
+func (u *UserState) Apply(event eventsourced.Event) error {
+	switch e := event.(type) {
+	case UserNameChanged:
+		u.Name = e.NewName
+	case UserAgeChanged:
+		u.Age = e.NewAge
+	case UserEmailChanged:
+		u.Email = e.NewEmail
+	default:
+		return fmt.Errorf("unknown event type: %s", event.Type())
+	}
+	return nil
+}
+
+// Clone implements eventsourced.State[*UserState] - creates a deep copy
+func (u *UserState) Clone() *UserState {
+	return &UserState{
 		Name:  u.Name,
 		Age:   u.Age,
 		Email: u.Email,
@@ -43,27 +58,12 @@ type UserEmailChanged struct {
 
 func (e UserEmailChanged) Type() string { return "UserEmailChanged" }
 
-// applyUserEvent handles state transitions
-func applyUserEvent(state *UserState, event eventsourced.Event) error {
-	switch e := event.(type) {
-	case UserNameChanged:
-		state.Name = e.NewName
-	case UserAgeChanged:
-		state.Age = e.NewAge
-	case UserEmailChanged:
-		state.Email = e.NewEmail
-	default:
-		return fmt.Errorf("unknown event type: %s", event.Type())
-	}
-	return nil
-}
-
 func main() {
 	// Initialize the event sourced state with a zero value
-	initialState := UserState{Name: "Unknown", Age: 0, Email: ""}
+	initialState := &UserState{Name: "Unknown", Age: 0, Email: ""}
 	
-	// Use the Clone method as the clone function
-	es := locked.New(initialState, applyUserEvent, UserState.Clone)
+	// The new design is much simpler - no function parameters needed
+	es := locked.New(initialState)
 
 	fmt.Println("=== Event Sourced User State Example ===")
 	fmt.Printf("Initial state: %+v\n", es.GetState())
@@ -85,7 +85,7 @@ func main() {
 	// Demonstrate state cloning to avoid mutation
 	fmt.Println("\n=== State Cloning Example ===")
 	currentState := es.GetState()
-	// GetState now automatically clones the state
+	// GetState now automatically clones the state using the state's Clone method
 	clonedState := es.GetState()
 	
 	fmt.Printf("First call to GetState: %+v\n", currentState)
