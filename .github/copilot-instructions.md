@@ -46,78 +46,14 @@ After making any changes to the core library, ALWAYS verify these scenarios work
 3. **State Cloning**: Verify GetState() returns independent copies that can be modified without affecting internal state
 4. **Concurrent Access**: Verify multiple goroutines can safely read/write simultaneously (race detector must pass)
 
-### Validation Test Program
-Run this validation program to ensure complete functionality:
+### Test Suite Validation
+The comprehensive test suite in `locked/locked_test.go` validates all core functionality:
+- **State creation**: `TestNew` verifies initial state setup
+- **Event application**: `TestApply` and `TestApplyError` test event processing and error handling
+- **State cloning**: `TestStateCloning` ensures GetState() returns independent copies
+- **Concurrent access**: `TestConcurrentAccess` validates thread safety with goroutines
 
-```go
-// Save as /tmp/validate.go
-package main
-
-import (
-	"fmt"
-	"log"
-
-	"github.com/shogotsuneto/go-eventsourced"
-	"github.com/shogotsuneto/go-eventsourced/locked"
-)
-
-type TestState struct {
-	Count int
-	Name  string
-}
-
-func (s *TestState) Apply(event eventsourced.Event) error {
-	switch e := event.(type) {
-	case IncrementEvent:
-		s.Count += e.Amount
-	case SetNameEvent:
-		s.Name = e.Name
-	default:
-		return fmt.Errorf("unknown event: %s", event.Type())
-	}
-	return nil
-}
-
-func (s *TestState) Clone() *TestState {
-	return &TestState{Count: s.Count, Name: s.Name}
-}
-
-type IncrementEvent struct{ Amount int }
-func (e IncrementEvent) Type() string { return "increment" }
-
-type SetNameEvent struct{ Name string }
-func (e SetNameEvent) Type() string { return "setname" }
-
-func main() {
-	es := locked.New(&TestState{Count: 0, Name: "initial"})
-	
-	fmt.Printf("Initial: %+v\n", es.GetState())
-	
-	if err := es.Apply(IncrementEvent{Amount: 5}); err != nil {
-		log.Fatalf("Failed: %v", err)
-	}
-	
-	if err := es.Apply(SetNameEvent{Name: "updated"}); err != nil {
-		log.Fatalf("Failed: %v", err)
-	}
-	
-	final := es.GetState()
-	fmt.Printf("Final: %+v\n", final)
-	
-	// Test cloning
-	state1 := es.GetState()
-	state2 := es.GetState()
-	state1.Name = "modified"
-	
-	if state2.Name == "modified" {
-		log.Fatal("State cloning failed")
-	}
-	
-	fmt.Println("✓ All validation tests passed!")
-}
-```
-
-Then run: `go run /tmp/validate.go` (requires go.mod setup with local replace directive)
+Run `go test -v ./locked` to see detailed test output and verify all scenarios pass.
 
 ## Key Architecture Components
 
