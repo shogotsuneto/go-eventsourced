@@ -80,6 +80,7 @@ type ES[S any] interface {
 - **Better Encapsulation**: State types own their behavior (applying events and cloning)
 - **Go-Idiomatic**: Methods on types rather than function passing
 - **Minimal Dependencies**: Standard library only
+- **In-Memory First**: Focused on lightweight, embedded use without external persistence
 
 ## Architecture
 
